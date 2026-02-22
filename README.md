@@ -16,7 +16,7 @@ RelyonUs ERP is a monolithic, enterprise-grade command center designed to comple
 
 Bridging the gap between human capital, financial accounting, software development lifecycles, and real-time intra-company communication, RelyonUs handles enormous datasets with blistering speed. It delivers a flawless, incredibly responsive user experience using pure, highly optimized technologies without relying on bloated front-end libraries or unnecessary third-party dependencies.
 
-![Hero Dashboard](./Screenshots/HERO.png)
+![Hero Dashboard](./screenshots/HERO.png)
 
 ---
 
@@ -38,7 +38,7 @@ RelyonUs ERP is not a static product; it is a foundational ecosystem. Designed w
 ### 👑 Super Admin Command Center
 A God-mode bird's-eye view of your entire organization. The Super Admin dashboard provides a live-updating, heavily detailed command center. Monitor active users, ongoing development projects, real-time revenue snapshots (Month-to-Date vs Lifetime), open tasks, leave requests, and overdue follow-ups simultaneously.
 
-![Admin Overview](./Screenshots/ADMIN.png)
+![Admin Overview](./screenshots/ADMIN.png)
 
 ### 💰 Precision Financial & Payroll Management
 The finance module brings enterprise economics into sharp focus. It acts as the financial heartbeat of the company:
@@ -46,7 +46,7 @@ The finance module brings enterprise economics into sharp focus. It acts as the 
 *   **Payroll Processing:** Generate, track, and distribute employee payslips with complex breakdowns (Basic, HRA, specific tax deductions, PF).
 *   **Revenue Tracking:** Real-time visibility into MTD revenue and pending financial obligations, ensuring cash flow is tracked with zero margin for error.
 
-![Finance Module](./Screenshots/FINANCE.png)
+![Finance Module](./screenshots/FINANCE.png)
 
 ### 📈 Master CRM & Sales Pipeline
 A fully immersive, visually intuitive sales pipeline that guarantees no opportunity falls through the cracks. 
@@ -54,7 +54,7 @@ A fully immersive, visually intuitive sales pipeline that guarantees no opportun
 *   **Actionable Data:** Schedule highly visible follow-ups, proactively catch and merge duplicate leads, attach dynamically generated proposals, and log historical interactions automatically. 
 *   **Intelligent Overdue Tracking:** The system aggressively flags overdue follow-ups, ensuring your sales team remains brutally efficient.
 
-![Leads Pipeline](./Screenshots/LEADS.png)
+![Leads Pipeline](./screenshots/LEADS.png)
 
 ### ⚡ Kanban & Development Project Management
 Bring absolute order to development chaos with dedicated project spaces and Kanban workflows.
@@ -62,7 +62,7 @@ Bring absolute order to development chaos with dedicated project spaces and Kanb
 *   **Time Logging:** Developers can log hours directly against specific projects, seamlessly integrating with the finance module.
 *   **Unified Activity:** A live timeline feed keeps all stakeholders updated on project progress, pull requests, and deployment notes without needing external tools like Jira or Trello.
 
-![Kanban Board](./Screenshots/KANBAN.png)
+![Kanban Board](./screenshots/KANBAN.png)
 
 ### 💬 Instant Real-Time Enterprise Chat
 Why leak company data to external communication tools like Slack or Teams? RelyonUs ERP features an incredibly robust, integrated real-time WebSocket communication layer.
@@ -70,7 +70,7 @@ Why leak company data to external communication tools like Slack or Teams? Relyo
 *   **Instant File Sharing:** Share media and documents securely within the ERP's encrypted database volume.
 *   **Cross-Department Synergy:** Global unread badges alert users instantly, no matter what module of the ERP they are currently working in.
 
-![Real-Time Chat](./Screenshots/CHAT.png)
+![Real-Time Chat](./screenshots/CHAT.png)
 
 ---
 
