@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { randomUUID }   from "crypto";
 import { getSession }   from "../../../lib/auth";
 import { query }        from "../../../lib/db";
+import { logAudit }     from "../../../lib/auditlogger";
 
 export async function GET() {
   const session = await getSession();
@@ -83,6 +84,10 @@ export async function POST(request) {
       pf, tx, od, total_deductions, net_pay,
       payment_mode || "Bank Transfer", payment_date || null, notes || null, status,
     ]);
+
+    let ip = request.headers.get("x-forwarded-for") || request.headers.get("remote-addr") || request.ip || "Unknown IP";
+    if (ip === "::1") ip = "127.0.0.1";
+    await logAudit({ action: `PAYSLIP_CREATED: ${user_id}`, criticality: "High", done_by: session.id, done_by_ip: ip });
 
     return NextResponse.json({ success: true, message: "Payslip created.", id });
   } catch (err) {

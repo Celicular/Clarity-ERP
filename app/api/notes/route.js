@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { randomUUID }   from "crypto";
 import { getSession }   from "../../../lib/auth";
 import { query }        from "../../../lib/db";
+import { logAudit }     from "../../../lib/auditlogger";
 
 export async function GET() {
   const session = await getSession();
@@ -50,6 +51,10 @@ export async function POST(request) {
       INSERT INTO notes (id, created_by, topic, description, status, elevated_to)
       VALUES ($1, $2, $3, $4, $5, $6)
     `, [id, session.id, topic, description, noteStatus, elevated_to || null]);
+
+    let ip = request.headers.get("x-forwarded-for") || request.headers.get("remote-addr") || request.ip || "Unknown IP";
+    if (ip === "::1") ip = "127.0.0.1";
+    await logAudit({ action: `NOTE_CREATED: ${topic.substring(0,20)}`, criticality: "Low", done_by: session.id, done_by_ip: ip });
 
     return NextResponse.json({ success: true, message: "Note created.", id });
   } catch (err) {

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import "./features.css"; 
+import Navbar from "../components/Navbar"; 
 
 function TypewriterHeading() {
   const [charIndex, setCharIndex] = useState(0);
@@ -79,41 +80,8 @@ export default function FeaturesPage() {
   return (
     <div className="relative flex w-full flex-col bg-[#050505] min-h-screen font-sans selection:bg-[#1152d4]/30 selection:text-white overflow-x-hidden text-slate-300">
       
-      {/* ─── Header / Navbar (Kept from original Next.js CRM) ───────────────── */}
-      <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-b-[#303030] px-6 lg:px-40 py-3 z-50 bg-[#050505]/90 backdrop-blur-xl sticky top-0">
-        <div className="flex items-center gap-4 text-white">
-          <div className="size-6 text-[#1152d4]">
-            <span className="material-symbols-outlined text-2xl">grid_view</span>
-          </div>
-          <Link href="/" className="text-white text-lg font-bold leading-tight tracking-[-0.015em]">Clarity</Link>
-        </div>
-
-        <div className="hidden lg:flex flex-1 justify-end gap-8">
-          <div className="flex items-center gap-9">
-            {[
-              { label: "Features", href: "/features" },
-              { label: "Solutions", href: "/solutions" },
-              { label: "Pricing", href: "/solutions#pricing" },
-              { label: "About", href: "/about" },
-            ].map((link) => (
-              <Link key={link.label} className="text-white text-sm font-medium leading-normal hover:text-gray-300 transition-colors" href={link.href}>
-                {link.label}
-              </Link>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <Link href="/login" className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-9 px-4 bg-[#303030] hover:bg-[#404040] transition-colors text-white text-sm font-bold leading-normal tracking-[0.015em]">
-              Log In
-            </Link>
-            <Link href="/login" className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-9 px-4 bg-[#1152d4] hover:bg-[#1152d4]/90 transition-all shadow-[0_0_15px_rgba(17,82,212,0.4)] text-white text-sm font-bold leading-normal tracking-[0.015em]">
-              <span className="truncate">Get Started</span>
-            </Link>
-          </div>
-        </div>
-        <div className="lg:hidden text-white">
-          <span className="material-symbols-outlined">menu</span>
-        </div>
-      </header>
+      {/* ─── Header / Navbar (Imported from components) ───────────────── */}
+      <Navbar />
 
       {/* ─── Sidebar (Architect's Handbook style) ───────────────────────── */}
       <aside className="fixed left-0 top-[60px] h-[calc(100vh-60px)] w-72 bg-[#0a0a0a] border-r border-white/5 pt-12 pb-12 px-6 z-40 hidden xl:block overflow-y-auto custom-scrollbar">
@@ -477,7 +445,7 @@ export default function FeaturesPage() {
         </section>
 
         {/* ─── Command Matrix (HR/Admin) ───────────────────────── */}
-        <section className="py-32 px-8 md:px-16 border-b border-white/5 bg-[#0a0a0a]/20 reveal-on-scroll" ref={addToRefs}>
+        <section className="py-32 px-8 md:px-16 border-b border-white/5 bg-[#0a0a0a]/20 reveal-on-scroll" id="command-center" ref={addToRefs}>
           <div className="max-w-7xl mx-auto">
             <div className="mb-20 text-center max-w-3xl mx-auto">
               <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-4 block">Central Orchestration</span>

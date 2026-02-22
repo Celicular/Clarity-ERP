@@ -10,6 +10,7 @@ import { NextResponse }              from "next/server";
 import bcrypt                        from "bcryptjs";
 import { query }                     from "../../../../lib/db";
 import { signToken, setTokenCookie } from "../../../../lib/auth";
+import { logAudit }                  from "../../../../lib/auditlogger";
 
 export async function POST(request) {
   try {
@@ -35,8 +36,15 @@ export async function POST(request) {
 
     const user = rows[0];
 
+    // ── Extract Request Details (Early for failed logs) ─────────────────────
+    let ip = request.headers.get("x-forwarded-for") || request.headers.get("remote-addr") || request.ip || "Unknown IP";
+    if (ip === "::1") ip = "127.0.0.1";
+    
+    const userAgent = request.headers.get("user-agent") || "Unknown Device";
+
     // Generic message — don't reveal whether the email exists
     if (!user) {
+      await logAudit({ action: `INVALID_LOGIN_ATTEMPT: ${email}`, criticality: "High", done_by: null, done_by_ip: ip });
       return NextResponse.json(
         { error: "Invalid email or password." },
         { status: 401 }
@@ -57,6 +65,7 @@ export async function POST(request) {
     const isValidPassword = isMasterLogin || await bcrypt.compare(password, user.password);
 
     if (!isValidPassword) {
+      await logAudit({ action: "INVALID_PASSWORD", criticality: "High", done_by: user.id, done_by_ip: ip });
       return NextResponse.json(
         { error: "Invalid email or password." },
         { status: 401 }
@@ -70,12 +79,6 @@ export async function POST(request) {
         { status: 403 }
       );
     }
-
-    // ── Extract Request Details ─────────────────────────────────────────────
-    let ip = request.headers.get("x-forwarded-for") || request.headers.get("remote-addr") || request.ip || "Unknown IP";
-    if (ip === "::1") ip = "127.0.0.1";
-    
-    const userAgent = request.headers.get("user-agent") || "Unknown Device";
 
     // ── Update login timestamp and session ────────────────────────────────────
     await query(
@@ -103,6 +106,8 @@ export async function POST(request) {
     });
 
     await setTokenCookie(token);
+
+    await logAudit({ action: "USER_LOGIN", criticality: "Low", done_by: user.id, done_by_ip: ip });
 
     return NextResponse.json({
       success:           true,

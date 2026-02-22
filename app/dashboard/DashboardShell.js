@@ -25,6 +25,8 @@ import ProjectsView          from "../components/ProjectsView";
 import DeveloperProfileView  from "../components/DeveloperProfileView";
 import BugReportView         from "../components/BugReportView";
 import ChatView              from "../components/ChatView";
+import AuditLogsView         from "../components/AuditLogsView";
+import PasswordReentryModal  from "../components/PasswordReentryModal";
 
 /* ── View registry ── */
 const VIEW_COMPONENTS = {
@@ -43,6 +45,7 @@ const VIEW_COMPONENTS = {
   "dev-profile":   DeveloperProfileView,
   "bug-reports":   BugReportView,
   "chat":          ChatView,
+  "audit-logs":    AuditLogsView,
 };
 
 /* ── Role-based navigation ── */
@@ -58,6 +61,7 @@ const NAV_ITEMS = {
     { id: "meetings",    label: "Meetings",         icon: "groups" },
     { id: "payslips",    label: "Payroll",          icon: "payments" },
     { id: "notes",       label: "Notes",            icon: "sticky_note_2" },
+    { id: "audit-logs",  label: "Audit Logs",       icon: "shield",        section: "Admin Tools" },
     { id: "chat",        label: "Chats",            icon: "forum",         section: "Personal" },
   ],
   EMPLOYEE: [
@@ -130,6 +134,10 @@ export default function DashboardShell({ user }) {
   const isEmployee      = user.role === "EMPLOYEE";
   const needsOnboarding = isEmployee && user.first_login === true;
   const [showOnboarding, setShowOnboarding] = useState(needsOnboarding);
+  
+  // State for Audit Logs conditional view
+  const [showPwdModal, setShowPwdModal]     = useState(false);
+  const [pendingView, setPendingView]       = useState(null);
 
   const navItems   = getNavItems(user);
   const ActiveView = VIEW_COMPONENTS[activeView] || DashboardHome;
@@ -139,18 +147,47 @@ export default function DashboardShell({ user }) {
     window.location.reload();
   }
 
+  function handleViewChange(newView) {
+    if (newView === "audit-logs") {
+      setPendingView(newView);
+      setShowPwdModal(true);
+    } else {
+      setActiveView(newView);
+    }
+  }
+
+  function handlePwdSuccess() {
+    setShowPwdModal(false);
+    if (pendingView) {
+      setActiveView(pendingView);
+      setPendingView(null);
+    }
+  }
+
+  function handlePwdCancel() {
+    setShowPwdModal(false);
+    setPendingView(null);
+  }
+
   return (
     <div className="flex h-screen bg-[#111111] overflow-hidden">
 
       {/* Onboarding overlay — employees only */}
       {showOnboarding && <OnboardingModal onComplete={handleOnboardingComplete} />}
 
+      {/* Password Re-entry Modal */}
+      <PasswordReentryModal 
+        isOpen={showPwdModal} 
+        onClose={handlePwdCancel} 
+        onSuccess={handlePwdSuccess} 
+      />
+
       {/* Sidebar */}
       <Sidebar
         user={user}
         navItems={navItems}
         activeView={activeView}
-        onViewChange={setActiveView}
+        onViewChange={handleViewChange}
       />
 
       {/* Main content */}

@@ -6,6 +6,7 @@
 import { NextResponse } from "next/server";
 import { getSession }   from "../../../lib/auth";
 import { query }        from "../../../lib/db";
+import { logAudit }     from "../../../lib/auditlogger";
 
 export async function GET() {
   const session = await getSession();
@@ -71,6 +72,10 @@ export async function POST(req) {
       VALUES ($1, $2, $3, $4, 'open', $5, $6)
       RETURNING *
     `, [project_id, title.trim(), description || null, priority, session.id, attachment_urls]);
+
+    let ip = req.headers.get("x-forwarded-for") || req.headers.get("remote-addr") || req.ip || "Unknown IP";
+    if (ip === "::1") ip = "127.0.0.1";
+    await logAudit({ action: `BUG_REPORT_SUBMITTED: ${title.substring(0,20)}`, criticality: "Medium", done_by: session.id, done_by_ip: ip });
 
     return NextResponse.json({ success: true, bug });
   } catch (err) {

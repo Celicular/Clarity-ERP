@@ -5,6 +5,7 @@
 import { NextResponse } from "next/server";
 import { getSession }   from "../../../../../lib/auth";
 import { query }        from "../../../../../lib/db";
+import { logAudit }     from "../../../../../lib/auditlogger";
 
 export async function POST(request, { params }) {
   const session = await getSession();
@@ -30,6 +31,10 @@ export async function POST(request, { params }) {
         updated_at  = NOW()
       WHERE id = $2
     `, [session.id, id]);
+
+    let ip = request.headers.get("x-forwarded-for") || request.headers.get("remote-addr") || request.ip || "Unknown IP";
+    if (ip === "::1") ip = "127.0.0.1";
+    await logAudit({ action: `LEAVE_APPROVED: ${id}`, criticality: "Medium", done_by: session.id, done_by_ip: ip });
 
     return NextResponse.json({ success: true, message: "Leave approved." });
   } catch (err) {
