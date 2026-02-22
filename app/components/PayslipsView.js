@@ -79,9 +79,15 @@ function PayslipDetailPanel({ payslipId, onClose, currentUser }) {
             {new Date(slip.pay_period_start).toLocaleDateString("en-IN", { month: "long", year: "numeric" })} period
           </p>
         </div>
-        <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
-          <span className="material-symbols-outlined">close</span>
-        </button>
+        <div className="flex items-center gap-4">
+          <button onClick={() => window.open(`/payslips/${payslipId}/print`, '_blank')}
+            className="text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1 text-sm font-semibold">
+            <span className="material-symbols-outlined text-base">print</span> Print
+          </button>
+          <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
+            <span className="material-symbols-outlined">close</span>
+          </button>
+        </div>
       </div>
 
       {/* Employee info */}
@@ -171,7 +177,7 @@ function PayslipDetailPanel({ payslipId, onClose, currentUser }) {
 
 /* ─────────────────────────────── Main Component ─────────────────────────────── */
 export default function PayslipsView({ user }) {
-  const isAdmin = user.role === "ADMIN";
+  const isAdmin = user.role === "ADMIN" || user.sub_role_dept === "Finance";
 
   const [payslips, setPayslips]     = useState([]);
   const [allUsers, setAllUsers]     = useState([]);

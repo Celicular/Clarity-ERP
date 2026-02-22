@@ -303,6 +303,24 @@ export default function MeetingsView({ user }) {
                     </div>
                   )}
 
+                  {/* Remarks (admin view only) */}
+                  {isAdmin && Array.isArray(m.remarks) && m.remarks.length > 0 && (
+                    <div className="mt-3 bg-[#111] border border-[#2a2a2a] rounded-lg p-3">
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Remarks / Feedback</p>
+                      <div className="flex flex-col gap-2">
+                        {m.remarks.map((r, i) => (
+                          <div key={i} className="flex flex-col gap-0.5">
+                            <div className="flex items-center justify-between text-[10px]">
+                              <span className="font-semibold text-zinc-300">{r.by}</span>
+                              <span className="text-zinc-600">{new Date(r.at).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}</span>
+                            </div>
+                            <p className="text-xs text-zinc-400 leading-snug">{r.remark}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Meeting link */}
                   {m.meeting_link && (
                     <a href={m.meeting_link} target="_blank" rel="noreferrer"
@@ -372,7 +390,45 @@ export default function MeetingsView({ user }) {
                       { value: "Zoom",  label: "Zoom" },
                       { value: "Other", label: "Other" },
                     ]} />
-                    <MInput label="Meeting Link" value={meetingLink} onChange={setMeetingLink} placeholder="https://meet.google.com/…" />
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-medium text-zinc-400">Meeting Link</label>
+                        {platform === "GMeet" && (
+                          <button onClick={async () => {
+                              if (!title || !scheduledAt) {
+                                setModalError("Title and scheduled time must be filled to auto-generate a link.");
+                                return;
+                              }
+                              setSaving(true); setModalError("");
+                              try {
+                                const res = await fetch("/api/meetings/generate-link", {
+                                  method: "POST", headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ title, description, scheduledAt, durationMin })
+                                });
+                                const data = await res.json();
+                                if (!res.ok) throw new Error(data.error);
+                                setMeetingLink(data.hangoutLink);
+                                showToast("GMeet link generated!");
+                              } catch (e) {
+                                setModalError(e.message);
+                              } finally {
+                                setSaving(false);
+                              }
+                            }}
+                            disabled={saving}
+                            className="text-[10px] uppercase font-bold text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1 disabled:opacity-50">
+                            <span className="material-symbols-outlined text-[12px]">magic_button</span>
+                            Auto-Generate
+                          </button>
+                        )}
+                      </div>
+                      <input type="text" value={meetingLink} onChange={(e) => setMeetingLink(e.target.value)}
+                        placeholder="https://meet.google.com/…"
+                        className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-white
+                                   placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50
+                                   focus:ring-1 focus:ring-blue-500/20 transition-all"
+                      />
+                    </div>
                   </div>
 
                   {/* Attendee picker */}

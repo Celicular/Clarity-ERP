@@ -2,9 +2,15 @@
    app/components/HomePage.js
    Full homepage component — routed at '/' via app/page.js
 ───────────────────────────────────────────────────────────────────────────── */
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
+import WebsiteLeadModal from "./WebsiteLeadModal";
 
 export default function HomePage() {
+  const [showLeadModal, setShowLeadModal] = useState(false);
+
   return (
     <div className="relative flex w-full flex-col bg-[#141414]">
 
@@ -20,10 +26,15 @@ export default function HomePage() {
         {/* Desktop Nav */}
         <div className="hidden lg:flex flex-1 justify-end gap-8">
           <div className="flex items-center gap-9">
-            {["Features", "Solutions", "Pricing", "About"].map((link) => (
-              <a key={link} className="text-white text-sm font-medium leading-normal hover:text-gray-300 transition-colors" href="#">
-                {link}
-              </a>
+            {[
+              { label: "Features", href: "/features" },
+              { label: "Solutions", href: "/solutions" },
+              { label: "Pricing", href: "/solutions#pricing" },
+              { label: "About", href: "/about" },
+            ].map((link) => (
+              <Link key={link.label} href={link.href} className="text-white text-sm font-medium leading-normal hover:text-gray-300 transition-colors">
+                {link.label}
+              </Link>
             ))}
           </div>
           <div className="flex gap-2">
@@ -34,7 +45,10 @@ export default function HomePage() {
             >
               Log In
             </Link>
-            <button className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-9 px-4 bg-white text-black hover:bg-gray-200 transition-colors text-sm font-bold leading-normal tracking-[0.015em]">
+            <button
+              onClick={() => setShowLeadModal(true)}
+              className="flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-9 px-4 bg-[#aaa] text-black hover:bg-[#ff9900] hover:text-white transition-colors text-sm font-bold leading-normal tracking-[0.015em]"
+            >
               <span className="truncate">Get Started</span>
             </button>
           </div>
@@ -69,7 +83,10 @@ export default function HomePage() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 mt-4">
-            <button className="flex items-center justify-center h-12 px-8 rounded-lg bg-white text-black text-base font-bold hover:bg-gray-200 transition-all transform hover:scale-105">
+            <button
+              onClick={() => setShowLeadModal(true)}
+              className="flex items-center justify-center h-12 px-8 rounded-lg bg-[#aaa] text-black text-base font-bold hover:bg-[#ff9900] hover:text-white transition-all transform hover:scale-105"
+            >
               Start for free
             </button>
             <button className="flex items-center justify-center h-12 px-8 rounded-lg bg-[#303030] text-white border border-[#474747] text-base font-medium hover:bg-[#404040] transition-all group">
@@ -541,7 +558,10 @@ export default function HomePage() {
             Join thousands of businesses streamlining their operations today. No credit card required.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-            <button className="flex min-w-[200px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-6 bg-white text-black text-base font-bold hover:bg-gray-200 transition-colors">
+            <button
+              onClick={() => setShowLeadModal(true)}
+              className="flex min-w-[200px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-6 bg-[#aaa] text-black text-base font-bold hover:bg-[#ff9900] hover:text-white transition-colors"
+            >
               Get Started for Free
             </button>
             <button className="flex min-w-[200px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-6 bg-[#1f1f1f] border border-[#303030] text-white text-base font-bold hover:bg-[#303030] transition-colors">
@@ -560,6 +580,7 @@ export default function HomePage() {
         </footer>
       </section>
 
+      <WebsiteLeadModal isOpen={showLeadModal} onClose={() => setShowLeadModal(false)} />
     </div>
   );
 }

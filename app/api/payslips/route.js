@@ -13,7 +13,9 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    if (session.role === "ADMIN") {
+    const isFinanceAdmin = session.role === "ADMIN" || session.sub_role_dept === "Finance";
+
+    if (isFinanceAdmin) {
       const { rows } = await query(`
         SELECT p.*, u.name AS employee_name, u.email AS employee_email
         FROM payslips p JOIN users u ON u.id = p.user_id
@@ -38,7 +40,8 @@ export async function GET() {
 export async function POST(request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (session.role !== "ADMIN") return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  const isFinanceAdmin = session.role === "ADMIN" || session.sub_role_dept === "Finance";
+  if (!isFinanceAdmin) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
   try {
     const {

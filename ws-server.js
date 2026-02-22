@@ -68,12 +68,28 @@ function sendTo(userId, data) {
   }
 }
 
-/* ── Fetch last N messages for a room (with reply preview) ── */
+/* ── Fetch last N messages for a room (with reply preview & read receipts) ── */
 async function fetchHistory(roomId, limit = 60) {
   const { rows } = await query(
-    `SELECT m.*, u.name AS sender_name,
+    `SELECT m.*, 
+            u.name AS sender_name,
             rm.content AS reply_to_content,
-            ru.name    AS reply_to_sender
+            ru.name    AS reply_to_sender,
+            (
+              SELECT COALESCE(json_agg(
+                json_build_object('id', crr.user_id, 'name', uu.name, 'read_at', crr.last_read_at)
+              ), '[]'::json)
+              FROM chat_room_reads crr
+              JOIN users uu ON uu.id = crr.user_id
+              WHERE crr.room_id = m.room_id 
+                AND crr.user_id != m.sender_id
+                AND crr.last_read_at >= (m.created_at - interval '1 second')
+            ) AS read_by,
+            (
+              SELECT COUNT(*)::int 
+              FROM chat_room_members 
+              WHERE room_id = m.room_id
+            ) AS total_members
      FROM chat_messages m
      JOIN users u ON u.id = m.sender_id
      LEFT JOIN chat_messages rm ON rm.id = m.reply_to_id
@@ -132,6 +148,8 @@ async function handleMessage(ws, user, data) {
     reply_to_id:      replyId,
     reply_to_content: replyContent,
     reply_to_sender:  replySender,
+    read_by:          [], // brand new message, nobody has read it yet
+    total_members:    (await query("SELECT COUNT(*)::int FROM chat_room_members WHERE room_id=$1", [roomId])).rows[0].count,
     created_at:       msg.created_at,
   };
 
@@ -373,6 +391,13 @@ wss.on("connection", async (ws, req) => {
     presence.set(user.id, ws);
     callPresence.set(user.id, ws);  // ← dedicated map for offer/ICE relay
 
+    /* Mark as logged in actively */
+    try {
+      await query("UPDATE users SET is_logged_in = TRUE, updated_at = NOW() WHERE id = $1", [user.id]);
+    } catch (e) {
+      console.error("[WS] DB update true error", e);
+    }
+
     /* ── Global message handler: call signaling + WebRTC relay ── */
     ws.on("message", async (raw) => {
       let data;
@@ -394,6 +419,24 @@ wss.on("connection", async (ws, req) => {
       const globClients = rooms.get("global");
       if (globClients) {
         globClients.delete(ws);
+
+        /* Check if this user has any other active global tabs open */
+        let userHasOtherTabs = false;
+        for (const c of globClients) {
+          if (c._user && c._user.id === user.id) {
+            userHasOtherTabs = true;
+            break;
+          }
+        }
+        
+        if (!userHasOtherTabs) {
+          try {
+            await query("UPDATE users SET is_logged_in = FALSE WHERE id = $1", [user.id]);
+          } catch (e) {
+            console.error("[WS] DB update false error", e);
+          }
+        }
+
         if (globClients.size === 0) rooms.delete("global");
       }
       if (presence.get(user.id) === ws) presence.delete(user.id);
@@ -453,12 +496,17 @@ wss.on("connection", async (ws, req) => {
       }
       case "typing": broadcast(roomId, { type: "typing", user_id: user.id, user_name: user.name }, ws); break;
 
-      /* ── Call signaling ── */
-      case "start-call":  await handleStartCall(ws, user, data); break;
-      case "accept-call": await handleAcceptCall(ws, user, data); break;
-      case "join-call":   await handleAcceptCall(ws, user, data); break; // same flow as accept
-      case "leave-call":  await handleLeaveCall(ws, user, data); break;
-      case "end-call":    await handleEndCall(ws, user, data); break;
+      case "mark_read": {
+        // Broadcast that this user has read the room up to NOW()
+        broadcast(roomId, { 
+          type: "read_receiptUpdate", 
+          room_id: roomId, 
+          user_id: user.id, 
+          user_name: user.name, 
+          read_at: new Date().toISOString() 
+        }, ws);
+        break;
+      }
 
       /* ── WebRTC relay (pure passthrough) ── */
       case "offer":

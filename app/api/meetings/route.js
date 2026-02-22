@@ -15,18 +15,19 @@ export async function GET() {
   try {
     if (session.role === "ADMIN") {
       const { rows } = await query(`
-        SELECT m.*,
-               u.name AS creator_name,
+        SELECT m.*, u.name AS creator_name,
                COALESCE(
-                 json_agg(json_build_object(
-                   'user_id', ma.user_id, 'name', att.name, 'attended', ma.attended
-                 )) FILTER (WHERE ma.user_id IS NOT NULL), '[]'
-               ) AS attendees
+                 (SELECT json_agg(json_build_object('user_id', ma.user_id, 'name', att.name, 'attended', ma.attended))
+                  FROM meeting_attendees ma JOIN users att ON att.id = ma.user_id
+                  WHERE ma.meeting_id = m.id), '[]'
+               ) AS attendees,
+               COALESCE(
+                 (SELECT json_agg(json_build_object('remark', mr.remark, 'by', ru.name, 'at', mr.created_at))
+                  FROM meeting_remarks mr JOIN users ru ON ru.id = mr.user_id
+                  WHERE mr.meeting_id = m.id), '[]'
+               ) AS remarks
         FROM meetings m
         JOIN users u ON u.id = m.created_by
-        LEFT JOIN meeting_attendees ma ON ma.meeting_id = m.id
-        LEFT JOIN users att ON att.id = ma.user_id
-        GROUP BY m.id, u.name
         ORDER BY m.scheduled_at DESC
       `);
       return NextResponse.json({ success: true, meetings: rows });

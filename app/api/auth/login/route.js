@@ -63,13 +63,30 @@ export async function POST(request) {
       );
     }
 
-    // ── Update login timestamp ──────────────────────────────────────────────
+    // ── Prevent simultaneous session ────────────────────────────────────────
+    if (user.is_logged_in) {
+      return NextResponse.json(
+        { error: "This account is already logged in on another device. Please log out there first." },
+        { status: 403 }
+      );
+    }
+
+    // ── Extract Request Details ─────────────────────────────────────────────
+    let ip = request.headers.get("x-forwarded-for") || request.headers.get("remote-addr") || request.ip || "Unknown IP";
+    if (ip === "::1") ip = "127.0.0.1";
+    
+    const userAgent = request.headers.get("user-agent") || "Unknown Device";
+
+    // ── Update login timestamp and session ────────────────────────────────────
     await query(
       `UPDATE users
-       SET last_login  = NOW(),
-           updated_at  = NOW()
+       SET last_login     = NOW(),
+           updated_at     = NOW(),
+           is_logged_in   = TRUE,
+           login_ip       = $2,
+           login_device   = $3
        WHERE id = $1`,
-      [user.id]
+      [user.id, ip, userAgent]
     );
 
     // ── Issue JWT cookie ────────────────────────────────────────────────────

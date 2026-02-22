@@ -148,6 +148,53 @@ function ForwardModal({ msg, rooms, onClose, onForward }) {
   );
 }
 
+/* ── Message Info Modal (Read Receipts) ── */
+function MessageInfoModal({ msg, onClose }) {
+  const readBy = msg.read_by || [];
+  return (
+    <div className="fixed inset-0 z-[300] bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-[#141414] border border-[#272727] rounded-2xl w-full max-w-sm p-6 flex flex-col gap-4"
+        onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-bold text-white flex items-center gap-2">
+            <span className="material-symbols-outlined text-[16px] text-blue-400">info</span>
+            Message Info
+          </h2>
+          <button onClick={onClose} className="text-zinc-500 hover:text-white">
+            <span className="material-symbols-outlined text-[18px]">close</span>
+          </button>
+        </div>
+
+        <div className="bg-[#0c0c0c] border border-[#222] p-3 rounded-xl text-[12px] text-zinc-300 line-clamp-2">
+          {msg.content || msg.file_name || "Attachment"}
+        </div>
+
+        <div className="flex flex-col gap-1 mt-2">
+          <div className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider mb-1 flex items-center justify-between">
+            <span>Read By</span>
+            <span className="bg-white/10 px-1.5 py-0.5 rounded text-zinc-300">{readBy.length}</span>
+          </div>
+
+          <div className="max-h-48 overflow-y-auto pr-1 flex flex-col gap-1">
+            {readBy.length === 0 ? (
+              <p className="text-xs text-zinc-600 px-1 py-2 italic flex items-center gap-2">
+                <span className="material-symbols-outlined text-[14px]">done</span> Sent, not read yet
+              </p>
+            ) : (
+              readBy.map(r => (
+                <div key={r.id} className="flex flex-col py-1.5 px-2 rounded-lg hover:bg-white/5 data-time">
+                  <span className="text-sm font-medium text-white">{r.name}</span>
+                  <span className="text-[10px] text-zinc-500">{fmtDate(r.read_at)} at {fmt(r.read_at)}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Reply quote strip inside a bubble ── */
 function ReplyQuote({ senderName, content, isMine }) {
   return (
@@ -163,12 +210,21 @@ function ReplyQuote({ senderName, content, isMine }) {
 }
 
 /* ── Single message bubble ── */
-function Bubble({ msg, isMine, onReply, onMediaClick, isAdmin, onDelete, onForward }) {
+function Bubble({ msg, isMine, onReply, onMediaClick, isAdmin, onDelete, onForward, onInfo }) {
   const [hovered, setHovered] = useState(false);
   const isFile   = msg.msg_type === "file";
   const isSystem = msg.msg_type === "system";
   const imgUrl = isFile && /\.(png|jpe?g|gif|webp|svg)$/i.test(msg.file_url || "") && msg.file_url;
   const vidUrl = isFile && /\.(mp4|webm|ogg|mov)$/i.test(msg.file_url || "")    && msg.file_url;
+
+  /* ── Right click context menu ── */
+  function handleContextMenu(e) {
+    e.preventDefault();
+    /* Pass event + msg up to parent to render global custom context menu */
+    window.dispatchEvent(new CustomEvent('chat:contextmenu', { 
+      detail: { x: e.clientX, y: e.clientY, msg, isMine, isAdmin } 
+    }));
+  }
 
   /* ── System message: render as a centred banner, not a bubble ── */
   if (isSystem) {
@@ -190,30 +246,22 @@ function Bubble({ msg, isMine, onReply, onMediaClick, isAdmin, onDelete, onForwa
     );
   }
 
+  /* ── Tick Logic ── */
+  const readByCount = Array.isArray(msg.read_by) ? msg.read_by.length : 0;
+  const isReadByAnyone = readByCount > 0;
+  // A message is fully read if all OTHER members in the room have read it.
+  const isReadByAll = readByCount >= (msg.total_members - 1);
+
   return (
-    <div className={`group flex gap-2 items-end ${isMine ? "flex-row-reverse" : "flex-row"}`}
+    <div className={`group flex gap-2 items-end cursor-pointer ${isMine ? "flex-row-reverse" : "flex-row"}`}
+      onContextMenu={handleContextMenu}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}>
-
-      {/* Action buttons — show on hover */}
-      <div className={`flex flex-col shrink-0 gap-1 transition-all mb-1 ${hovered ? "opacity-100" : "opacity-0"}`}>
-        <button onClick={() => onReply(msg)} className="size-6 rounded-full flex items-center justify-center text-zinc-600 hover:text-orange-400 hover:bg-white/5" title="Reply">
-          <span className="material-symbols-outlined text-[15px]">reply</span>
-        </button>
-        <button onClick={() => onForward(msg)} className="size-6 rounded-full flex items-center justify-center text-zinc-600 hover:text-blue-400 hover:bg-white/5" title="Forward">
-          <span className="material-symbols-outlined text-[15px]">forward</span>
-        </button>
-        {(isMine || isAdmin) && (
-          <button onClick={() => onDelete(msg)} className="size-6 rounded-full flex items-center justify-center text-zinc-600 hover:text-red-400 hover:bg-white/5" title="Delete">
-            <span className="material-symbols-outlined text-[15px]">delete</span>
-          </button>
-        )}
-      </div>
 
       <div className={`flex flex-col gap-0.5 max-w-[70%] ${isMine ? "items-end" : "items-start"}`}>
         {!isMine && <span className="text-[10px] text-zinc-500 px-1">{msg.sender_name}</span>}
 
-        <div className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed
+        <div className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed relative
           ${isMine
             ? "bg-orange-500 text-white rounded-tr-sm"
             : "bg-[#1e1e1e] text-zinc-200 border border-[#2a2a2a] rounded-tl-sm"}`}>
@@ -265,8 +313,17 @@ function Bubble({ msg, isMine, onReply, onMediaClick, isAdmin, onDelete, onForwa
           {isFile && msg.content && (
             <div className="mt-1.5 text-[12px] opacity-80 whitespace-pre-wrap">{msg.content}</div>
           )}
+
+          {/* Timestamp + Ticks (Inside bottom right corner) */}
+          <div className={`flex items-center justify-end gap-1 mt-1 -mb-1 -mr-2 ${isMine ? "text-orange-200" : "text-zinc-500"}`}>
+            <span className="text-[9px] leading-none opacity-80">{fmt(msg.created_at)}</span>
+            {isMine && (
+              <span className={`material-symbols-outlined text-[12px] leading-none ${isReadByAll ? "text-blue-300" : "opacity-80"}`}>
+                {isReadByAnyone ? "done_all" : "done"}
+              </span>
+            )}
+          </div>
         </div>
-        <span className="text-[9px] text-zinc-600 px-1">{fmt(msg.created_at)}</span>
       </div>
     </div>
   );
@@ -284,9 +341,11 @@ export default function ChatView({ user, wsRef: sharedWsRef }) {
   const [showNew, setShowNew]       = useState(false);
   const [composing, setComposing]     = useState(null);  // File being composed before send
   const [lightbox,  setLightbox]      = useState(null);  // msg to show in lightbox
+  const [infoModal, setInfoModal]     = useState(null);  // msg for info modal
   const [replyTo, setReplyTo]         = useState(null);  // { id, sender_name, content }
   const [forwarding, setForwarding]   = useState(null);  // msg to forward
   const [showSidebar, setShowSidebar] = useState(false); // mobile sidebar toggle
+  const [contextMenu, setContextMenu] = useState(null);  // { x, y, msg, isMine, isAdmin }
 
   const wsRef       = useRef(null);
   const globalWsRef = useRef(null);  // background WS for cross-room unread badges
@@ -403,11 +462,17 @@ export default function ChatView({ user, wsRef: sharedWsRef }) {
         const data = JSON.parse(e.data);
         if (data.type === "history") {
           setMessages(data.messages);
+          // Now that history is loaded and room is open, broadcast to others that we read it
+          ws.send(JSON.stringify({ type: "mark_read", roomId: activeRoom.id }));
         } else if (data.type === "message") {
           setMessages(p => [...p, data]);
           /* Auto-mark as read since this room is open */
           fetch(`/api/chat/rooms/${activeRoom.id}/read`, { method: "POST" })
-            .then(() => window.dispatchEvent(new Event("chat:read")));
+            .then(() => {
+              window.dispatchEvent(new Event("chat:read"));
+              // Instantly tell the sender we read it so their ticks go double
+              ws.send(JSON.stringify({ type: "mark_read", roomId: activeRoom.id }));
+            });
         } else if (data.type === "delete_message") {
           setMessages(p => p.filter(m => m.id !== data.messageId));
         } else if (data.type === "typing") {
@@ -417,6 +482,20 @@ export default function ChatView({ user, wsRef: sharedWsRef }) {
             return has ? p : [...p, { user_id: data.user_id, user_name: data.user_name }];
           });
           setTimeout(() => setTyping(p => p.filter(t => t.user_id !== data.user_id)), 2500);
+        } else if (data.type === "read_receiptUpdate") {
+          // A user just read the room. Update "read_by" for all previous messages from others.
+          setMessages(prev => prev.map(m => {
+            // Only update messages sent BEFORE their read_at timestamp, and not sent by the reader
+            if (m.sender_id === data.user_id || new Date(m.created_at) > new Date(data.read_at)) return m;
+            
+            const currentReaders = m.read_by || [];
+            if (currentReaders.some(r => r.id === data.user_id)) return m; // already marked
+
+            return {
+              ...m,
+              read_by: [...currentReaders, { id: data.user_id, name: data.user_name, read_at: data.read_at }]
+            };
+          }));
         }
       };
     }
@@ -429,6 +508,20 @@ export default function ChatView({ user, wsRef: sharedWsRef }) {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, typing]);
+
+  /* Context Menu global listener registration */
+  useEffect(() => {
+    function handleGlobalClick() { setContextMenu(null); }
+    function onCustomCtx(e) { setContextMenu(e.detail); }
+    window.addEventListener("click", handleGlobalClick);
+    window.addEventListener("scroll", handleGlobalClick, true);
+    window.addEventListener("chat:contextmenu", onCustomCtx);
+    return () => {
+      window.removeEventListener("click", handleGlobalClick);
+      window.removeEventListener("scroll", handleGlobalClick, true);
+      window.removeEventListener("chat:contextmenu", onCustomCtx);
+    };
+  }, []);
 
   /* ── Send message ── */
   function send() {
@@ -566,8 +659,6 @@ export default function ChatView({ user, wsRef: sharedWsRef }) {
             isAdmin={user?.role === "ADMIN"}
             onReply={(msg) => setReplyTo({ id: msg.id, sender_name: msg.sender_name, content: msg.content || msg.file_name })}
             onMediaClick={(msg) => setLightbox(msg)}
-            onDelete={onDeleteMessage}
-            onForward={(msg) => setForwarding(msg)}
           />
       );
     });
@@ -576,6 +667,46 @@ export default function ChatView({ user, wsRef: sharedWsRef }) {
 
   return (
     <div className="flex h-[calc(100vh-56px)] bg-[#0c0c0c] overflow-hidden md:rounded-xl md:border md:border-[#1e1e1e] relative">
+
+      {/* ── Custom Context Menu ── */}
+      {contextMenu && (
+        <div
+          className="fixed z-[100] bg-[#1a1a1a] shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-[#2a2a2a] rounded-xl flex flex-col py-1.5 w-44"
+          style={{ 
+            top: contextMenu.y, 
+            left: contextMenu.x,
+            transform: contextMenu.isMine ? "translateX(-100%)" : "none"
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button onClick={() => { setReplyTo({ id: contextMenu.msg.id, sender_name: contextMenu.msg.sender_name, content: contextMenu.msg.content || contextMenu.msg.file_name }); setContextMenu(null); }} 
+            className="flex items-center gap-3 px-3 py-2 text-sm text-zinc-300 hover:text-white hover:bg-orange-500/20 hover:bg-white/5 transition-colors text-left">
+            <span className="material-symbols-outlined text-[16px] text-zinc-500">reply</span> Reply
+          </button>
+          
+          <button onClick={() => { setForwarding(contextMenu.msg); setContextMenu(null); }} 
+            className="flex items-center gap-3 px-3 py-2 text-sm text-zinc-300 hover:text-white hover:bg-blue-500/20 transition-colors text-left">
+            <span className="material-symbols-outlined text-[16px] text-zinc-500">forward</span> Forward
+          </button>
+
+          {contextMenu.isMine && (
+            <button onClick={() => { setInfoModal(contextMenu.msg); setContextMenu(null); }} 
+              className="flex items-center gap-3 px-3 py-2 text-sm text-zinc-300 hover:text-white hover:bg-zinc-700/50 transition-colors text-left">
+              <span className="material-symbols-outlined text-[16px] text-zinc-500">info</span> Info
+            </button>
+          )}
+
+          {(contextMenu.isMine || contextMenu.isAdmin) && (
+            <>
+              <div className="h-px bg-[#2a2a2a] my-1" />
+              <button onClick={() => { onDeleteMessage(contextMenu.msg); setContextMenu(null); }} 
+                className="flex items-center gap-3 px-3 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors text-left">
+                <span className="material-symbols-outlined text-[16px] text-red-400">delete</span> Delete
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       {/* ── Mobile sidebar backdrop ── */}
       {showSidebar && (
@@ -700,14 +831,6 @@ export default function ChatView({ user, wsRef: sharedWsRef }) {
                   <div className="text-[10px] text-zinc-600 truncate">{activeRoom.agenda}</div>
                 )}
               </div>
-              {/* Call button */}
-              <button
-                onClick={() => window.__callManager?.requestCall(activeRoom.id, activeRoom.name)}
-                className="size-8 rounded-full flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/8 transition-all shrink-0"
-                title="Start voice call"
-              >
-                <span className="material-symbols-outlined text-[18px]">phone</span>
-              </button>
             </div>
 
             {/* Messages */}
@@ -839,6 +962,8 @@ export default function ChatView({ user, wsRef: sharedWsRef }) {
 
       {/* Media lightbox viewer */}
       {lightbox && <MediaLightbox msg={lightbox} onClose={() => setLightbox(null)} />}
+      {infoModal && <MessageInfoModal msg={infoModal} onClose={() => setInfoModal(null)} />}
+
     </div>
   );
 }

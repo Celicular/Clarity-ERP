@@ -8,7 +8,6 @@
 "use client";
 
 import { useState }            from "react";
-import CallManager             from "../components/CallManager";
 import Sidebar               from "../components/Sidebar";
 import OnboardingModal       from "../components/OnboardingModal";
 import DashboardHome         from "../components/DashboardHome";
@@ -104,6 +103,8 @@ function getNavItems(user) {
   ];
   if (isFinanceRole(user)) return [
     { id: "projects", label: "Projects", icon: "rocket_launch", section: "Work" },
+    { id: "payslips", label: "Payroll",  icon: "payments",      section: "Finance" },
+    { id: "clients",  label: "Clients",  icon: "business" },
     ...shared,
   ];
   if (isSalesRole(user)) return [
@@ -158,9 +159,6 @@ export default function DashboardShell({ user }) {
           <ActiveView user={user} onViewChange={setActiveView} />
         </div>
       </main>
-
-      {/* Global call manager — self-sufficient, owns its own WS */}
-      <CallManager user={user} />
 
     </div>
   );
