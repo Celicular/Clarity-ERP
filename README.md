@@ -1,4 +1,4 @@
-# RelyonUs ERP Complete Documentation
+#Clarity ERP Complete Documentation
 
 > **Lead Architect & Maintainer:** Himadri Shekhar Goswami  
 > **Contact:** hsg090907.jsr@gmail.com  
