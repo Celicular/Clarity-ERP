@@ -1,4 +1,5 @@
-#Clarity ERP Complete Documentation
+Deployed -> Published Soon
+##Clarity ERP Complete Documentation
 
 > **Lead Architect & Maintainer:** Himadri Shekhar Goswami  
 > **Contact:** hsg090907.jsr@gmail.com  
