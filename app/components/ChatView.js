@@ -210,7 +210,7 @@ function ReplyQuote({ senderName, content, isMine }) {
 }
 
 /* ── Single message bubble ── */
-function Bubble({ msg, isMine, onReply, onMediaClick, isAdmin, onDelete, onForward, onInfo }) {
+function Bubble({ msg, isMine, isSequenceStart, isSequenceMiddle, isSequenceEnd, onReply, onMediaClick, isAdmin, onDelete, onForward, onInfo }) {
   const [hovered, setHovered] = useState(false);
   const isFile   = msg.msg_type === "file";
   const isSystem = msg.msg_type === "system";
@@ -252,19 +252,33 @@ function Bubble({ msg, isMine, onReply, onMediaClick, isAdmin, onDelete, onForwa
   // A message is fully read if all OTHER members in the room have read it.
   const isReadByAll = readByCount >= (msg.total_members - 1);
 
+  // Grouped border radius logic
+  let radiusClass = "rounded-2xl"; // default isolated
+  if (isMine) {
+    if (isSequenceStart)  radiusClass = "rounded-2xl rounded-br-sm";
+    if (isSequenceMiddle) radiusClass = "rounded-2xl rounded-r-sm";
+    if (isSequenceEnd)    radiusClass = "rounded-2xl rounded-tr-sm";
+  } else {
+    // left side alignment
+    if (isSequenceStart)  radiusClass = "rounded-2xl rounded-bl-sm";
+    if (isSequenceMiddle) radiusClass = "rounded-2xl rounded-l-sm";
+    if (isSequenceEnd)    radiusClass = "rounded-2xl rounded-tl-sm";
+  }
+
   return (
-    <div className={`group flex gap-2 items-end cursor-pointer ${isMine ? "flex-row-reverse" : "flex-row"}`}
+    <div className={`group flex gap-2 items-end cursor-pointer ${isMine ? "flex-row-reverse" : "flex-row"} ${isSequenceMiddle || isSequenceEnd ? "mt-0.5" : "mt-2"}`}
       onContextMenu={handleContextMenu}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}>
 
       <div className={`flex flex-col gap-0.5 max-w-[70%] ${isMine ? "items-end" : "items-start"}`}>
-        {!isMine && <span className="text-[10px] text-zinc-500 px-1">{msg.sender_name}</span>}
+        {/* Only show sender name on the FIRST message of a block */}
+        {!isMine && !isSequenceMiddle && !isSequenceEnd && <span className="text-[10px] text-zinc-500 px-1">{msg.sender_name}</span>}
 
-        <div className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed relative
+        <div className={`${radiusClass} px-4 py-2.5 text-sm leading-relaxed relative
           ${isMine
-            ? "bg-orange-500 text-white rounded-tr-sm"
-            : "bg-[#1e1e1e] text-zinc-200 border border-[#2a2a2a] rounded-tl-sm"}`}>
+            ? "bg-orange-500 text-white"
+            : "bg-[#1e1e1e] text-zinc-200 border border-[#2a2a2a]"}`}>
           {/* Reply quote */}
           {msg.reply_to_content && (
             <ReplyQuote senderName={msg.reply_to_sender} content={msg.reply_to_content} isMine={isMine} />
@@ -314,15 +328,17 @@ function Bubble({ msg, isMine, onReply, onMediaClick, isAdmin, onDelete, onForwa
             <div className="mt-1.5 text-[12px] opacity-80 whitespace-pre-wrap">{msg.content}</div>
           )}
 
-          {/* Timestamp + Ticks (Inside bottom right corner) */}
-          <div className={`flex items-center justify-end gap-1 mt-1 -mb-1 -mr-2 ${isMine ? "text-orange-200" : "text-zinc-500"}`}>
-            <span className="text-[9px] leading-none opacity-80">{fmt(msg.created_at)}</span>
-            {isMine && (
-              <span className={`material-symbols-outlined text-[12px] leading-none ${isReadByAll ? "text-blue-300" : "opacity-80"}`}>
-                {isReadByAnyone ? "done_all" : "done"}
-              </span>
-            )}
-          </div>
+          {/* Timestamp + Ticks (Inside bottom right corner, only on isolated or END of sequence) */}
+          {(!isSequenceStart && !isSequenceMiddle) && (
+             <div className={`flex items-center justify-end gap-1 mt-1 -mb-1 -mr-2 ${isMine ? "text-orange-200" : "text-zinc-500"}`}>
+               <span className="text-[9px] leading-none opacity-80">{fmt(msg.created_at)}</span>
+               {isMine && (
+                 <span className={`material-symbols-outlined text-[8px] leading-none ${isReadByAll ? "text-blue-300" : "opacity-80"}`}>
+                   {isReadByAnyone ? "done_all" : "done"}
+                 </span>
+               )}
+             </div>
+          )}
         </div>
       </div>
     </div>
@@ -639,7 +655,7 @@ export default function ChatView({ user, wsRef: sharedWsRef }) {
   function renderMessages() {
     let lastDate = null;
     const els = [];
-    messages.forEach((m) => {
+    messages.forEach((m, i) => {
       const d = fmtDate(m.created_at);
       if (d !== lastDate) {
         lastDate = d;
@@ -651,11 +667,34 @@ export default function ChatView({ user, wsRef: sharedWsRef }) {
           </div>
         );
       }
+
+      // Check proximity logic to group bubbles
+      const prev = messages[i - 1];
+      const next = messages[i + 1];
+
+      // A message is "grouped" if it's sent by the same user within 60 seconds
+      const isSameUserPrev = prev && prev.sender_id === m.sender_id && prev.msg_type === m.msg_type;
+      const isSameTimePrev = prev && (new Date(m.created_at) - new Date(prev.created_at)) < 60000;
+      const isConnectedPrev = isSameUserPrev && isSameTimePrev && !m.reply_to_content;
+
+      const isSameUserNext = next && next.sender_id === m.sender_id && next.msg_type === m.msg_type;
+      const isSameTimeNext = next && (new Date(next.created_at) - new Date(m.created_at)) < 60000;
+      const isConnectedNext = isSameUserNext && isSameTimeNext && !next.reply_to_content;
+
+      let isStart = false, isMiddle = false, isEnd = false;
+      
+      if (isConnectedNext && !isConnectedPrev) isStart = true;
+      else if (isConnectedNext && isConnectedPrev) isMiddle = true;
+      else if (!isConnectedNext && isConnectedPrev) isEnd = true;
+
       els.push(
         <Bubble
             key={m.id}
             msg={m}
             isMine={m.sender_id === user?.id}
+            isSequenceStart={isStart}
+            isSequenceMiddle={isMiddle}
+            isSequenceEnd={isEnd}
             isAdmin={user?.role === "ADMIN"}
             onReply={(msg) => setReplyTo({ id: msg.id, sender_name: msg.sender_name, content: msg.content || msg.file_name })}
             onMediaClick={(msg) => setLightbox(msg)}

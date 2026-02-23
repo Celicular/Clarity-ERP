@@ -29,6 +29,7 @@ import ChatView              from "../components/ChatView";
 import AuditLogsView         from "../components/AuditLogsView";
 import PasswordReentryModal  from "../components/PasswordReentryModal";
 import TicketsView           from "../components/TicketsView";
+import WebmailView           from "../components/WebmailView";
 
 /* ── View registry ── */
 const VIEW_COMPONENTS = {
@@ -49,6 +50,7 @@ const VIEW_COMPONENTS = {
   "chat":          ChatView,
   "audit-logs":    AuditLogsView,
   "tickets":       TicketsView,
+  "webmail":       WebmailView,
 };
 
 /* ── Role-based navigation ── */
@@ -67,6 +69,7 @@ const NAV_ITEMS = {
     { id: "audit-logs",  label: "Audit Logs",       icon: "shield",        section: "Admin Tools" },
     { id: "tickets",     label: "Tickets",          icon: "confirmation_number", section: "Admin Tools" },
     { id: "chat",        label: "Chats",            icon: "forum",         section: "Personal" },
+    { id: "webmail",     label: "Webmail",          icon: "mail",          section: "Personal" },
   ],
   EMPLOYEE: [
     { id: "dashboard",    label: "Dashboard",       icon: "dashboard" },
@@ -81,6 +84,7 @@ const NAV_ITEMS = {
     { id: "payslips",     label: "Payslips",        icon: "payments" },
     { id: "notes",        label: "Notes",           icon: "sticky_note_2" },
     { id: "tickets",      label: "Support Tickets", icon: "confirmation_number" },
+    { id: "webmail",      label: "Webmail",         icon: "mail",          section: "Personal" },
   ],
 };
 
@@ -104,6 +108,7 @@ function getNavItems(user) {
     { id: "bug-reports", label: "Bug Reports",   icon: "bug_report" },
     { id: "tickets",     label: "Support Tickets", icon: "confirmation_number", section: "Support" },
     { id: "chat",        label: "Chats",         icon: "forum" },
+    { id: "webmail",     label: "Webmail",       icon: "mail",          section: "Personal" },
   ];
 
   if (isDevRole(user)) return [
