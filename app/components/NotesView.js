@@ -10,6 +10,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useWebSocket } from "./WebSocketProvider";
 
 /* ── Tiny helpers ── */
 function Spinner() {
@@ -125,6 +126,9 @@ function NoteCard({ note, currentUser, onStatusChange, onDelete }) {
 
 /* ─────────────────────────────── Main ─────────────────────────────── */
 export default function NotesView({ user }) {
+  const wsCtx = useWebSocket();
+  const lastEvent = wsCtx?.lastEvent;
+
   const [notes, setNotes]         = useState([]);
   const [users, setUsers]         = useState([]);
   const [loading, setLoading]     = useState(true);
@@ -158,6 +162,12 @@ export default function NotesView({ user }) {
   }, [user.id]);
 
   useEffect(() => { fetchNotes(); fetchUsers(); }, [fetchNotes, fetchUsers]);
+
+  useEffect(() => {
+    if (lastEvent?.type === "erp_sync" && lastEvent.module === "notes") {
+      fetchNotes();
+    }
+  }, [lastEvent, fetchNotes]);
 
   async function handleSend() {
     if (!topic.trim() || !desc.trim()) { showToast("Topic and description are required."); return; }

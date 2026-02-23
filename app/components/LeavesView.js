@@ -7,6 +7,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useWebSocket } from "./WebSocketProvider";
 
 /* ── Input helpers — outside to prevent remount ── */
 function LInput({ label, value, onChange, type = "text", placeholder = "", required = false, min, max }) {
@@ -80,6 +81,9 @@ function Spinner() {
 /* ───────────────────────────────────────────────────────────────── */
 export default function LeavesView({ user }) {
   const isAdmin = user.role === "ADMIN";
+  
+  const wsCtx = useWebSocket();
+  const lastEvent = wsCtx?.lastEvent;
 
   const [leaves, setLeaves]         = useState([]);
   const [loading, setLoading]       = useState(true);
@@ -114,6 +118,12 @@ export default function LeavesView({ user }) {
   }, [filterStatus, search]);
 
   useEffect(() => { fetchLeaves(); }, [fetchLeaves]);
+
+  useEffect(() => {
+    if (lastEvent?.type === "erp_sync" && lastEvent.module === "leaves") {
+      fetchLeaves();
+    }
+  }, [lastEvent, fetchLeaves]);
 
   function openSubmit() {
     setLeaveType("Casual"); setStartDate(""); setEndDate("");

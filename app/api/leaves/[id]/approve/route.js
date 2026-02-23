@@ -4,7 +4,7 @@
  */
 import { NextResponse } from "next/server";
 import { getSession }   from "../../../../../lib/auth";
-import { query }        from "../../../../../lib/db";
+import { query, queryNotify } from "../../../../../lib/db";
 import { logAudit }     from "../../../../../lib/auditlogger";
 
 export async function POST(request, { params }) {
@@ -16,7 +16,7 @@ export async function POST(request, { params }) {
 
   try {
     const { rows } = await query(
-      "SELECT id, status FROM leave_requests WHERE id = $1", [id]
+      "SELECT id, user_id, status FROM leave_requests WHERE id = $1", [id]
     );
     if (!rows[0]) return NextResponse.json({ error: "Leave request not found." }, { status: 404 });
     if (rows[0].status !== "pending") {
@@ -35,6 +35,8 @@ export async function POST(request, { params }) {
     let ip = request.headers.get("x-forwarded-for") || request.headers.get("remote-addr") || request.ip || "Unknown IP";
     if (ip === "::1") ip = "127.0.0.1";
     await logAudit({ action: `LEAVE_APPROVED: ${id}`, criticality: "Medium", done_by: session.id, done_by_ip: ip });
+
+    await queryNotify("leaves", "update", "Your leave request was approved.", [rows[0].user_id]);
 
     return NextResponse.json({ success: true, message: "Leave approved." });
   } catch (err) {

@@ -6,7 +6,7 @@
 import { NextResponse } from "next/server";
 import { randomUUID }   from "crypto";
 import { getSession }   from "../../../lib/auth";
-import { query }        from "../../../lib/db";
+import { query, queryNotify } from "../../../lib/db";
 import { logAudit }     from "../../../lib/auditlogger";
 
 export async function GET() {
@@ -55,6 +55,8 @@ export async function POST(request) {
     let ip = request.headers.get("x-forwarded-for") || request.headers.get("remote-addr") || request.ip || "Unknown IP";
     if (ip === "::1") ip = "127.0.0.1";
     await logAudit({ action: `NOTE_CREATED: ${topic.substring(0,20)}`, criticality: "Low", done_by: session.id, done_by_ip: ip });
+
+    await queryNotify("notes", "create", `New note posted: ${topic.substring(0,20)}`);
 
     return NextResponse.json({ success: true, message: "Note created.", id });
   } catch (err) {

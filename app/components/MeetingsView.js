@@ -7,6 +7,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useWebSocket } from "./WebSocketProvider";
 
 /* ── Field helpers — defined outside to prevent remount on re-render ── */
 function MInput({ label, value, onChange, type = "text", placeholder = "", required = false }) {
@@ -84,6 +85,9 @@ function Spinner() {
 export default function MeetingsView({ user }) {
   const isAdmin = user.role === "ADMIN";
 
+  const wsCtx = useWebSocket();
+  const lastEvent = wsCtx?.lastEvent;
+
   const [meetings, setMeetings]     = useState([]);
   const [allUsers, setAllUsers]     = useState([]);
   const [loading, setLoading]       = useState(true);
@@ -128,6 +132,12 @@ export default function MeetingsView({ user }) {
   }, [isAdmin, user.id]);
 
   useEffect(() => { fetchMeetings(); fetchUsers(); }, [fetchMeetings, fetchUsers]);
+
+  useEffect(() => {
+    if (lastEvent?.type === "erp_sync" && lastEvent.module === "meetings") {
+      fetchMeetings();
+    }
+  }, [lastEvent, fetchMeetings]);
 
   /* ── Modal helpers ── */
   function openCreate() {

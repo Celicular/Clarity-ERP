@@ -9,6 +9,7 @@
 
 import { useState }            from "react";
 import Sidebar               from "../components/Sidebar";
+import { WebSocketProvider } from "../components/WebSocketProvider";
 import OnboardingModal       from "../components/OnboardingModal";
 import DashboardHome         from "../components/DashboardHome";
 import TimeTracker           from "../components/TimeTracker";
@@ -27,6 +28,7 @@ import BugReportView         from "../components/BugReportView";
 import ChatView              from "../components/ChatView";
 import AuditLogsView         from "../components/AuditLogsView";
 import PasswordReentryModal  from "../components/PasswordReentryModal";
+import TicketsView           from "../components/TicketsView";
 
 /* ── View registry ── */
 const VIEW_COMPONENTS = {
@@ -46,6 +48,7 @@ const VIEW_COMPONENTS = {
   "bug-reports":   BugReportView,
   "chat":          ChatView,
   "audit-logs":    AuditLogsView,
+  "tickets":       TicketsView,
 };
 
 /* ── Role-based navigation ── */
@@ -62,6 +65,7 @@ const NAV_ITEMS = {
     { id: "payslips",    label: "Payroll",          icon: "payments" },
     { id: "notes",       label: "Notes",            icon: "sticky_note_2" },
     { id: "audit-logs",  label: "Audit Logs",       icon: "shield",        section: "Admin Tools" },
+    { id: "tickets",     label: "Tickets",          icon: "confirmation_number", section: "Admin Tools" },
     { id: "chat",        label: "Chats",            icon: "forum",         section: "Personal" },
   ],
   EMPLOYEE: [
@@ -76,6 +80,7 @@ const NAV_ITEMS = {
     { id: "meetings",     label: "Meetings",        icon: "groups" },
     { id: "payslips",     label: "Payslips",        icon: "payments" },
     { id: "notes",        label: "Notes",           icon: "sticky_note_2" },
+    { id: "tickets",      label: "Support Tickets", icon: "confirmation_number" },
   ],
 };
 
@@ -97,6 +102,7 @@ function getNavItems(user) {
     { id: "payslips",    label: "Payslips",      icon: "payments" },
     { id: "notes",       label: "Notes",         icon: "sticky_note_2" },
     { id: "bug-reports", label: "Bug Reports",   icon: "bug_report" },
+    { id: "tickets",     label: "Support Tickets", icon: "confirmation_number", section: "Support" },
     { id: "chat",        label: "Chats",         icon: "forum" },
   ];
 
@@ -170,33 +176,35 @@ export default function DashboardShell({ user }) {
   }
 
   return (
-    <div className="flex h-screen bg-[#111111] overflow-hidden">
+    <WebSocketProvider>
+      <div className="flex h-screen bg-[#111111] overflow-hidden">
 
-      {/* Onboarding overlay — employees only */}
-      {showOnboarding && <OnboardingModal onComplete={handleOnboardingComplete} />}
+        {/* Onboarding overlay — employees only */}
+        {showOnboarding && <OnboardingModal onComplete={handleOnboardingComplete} />}
 
-      {/* Password Re-entry Modal */}
-      <PasswordReentryModal 
-        isOpen={showPwdModal} 
-        onClose={handlePwdCancel} 
-        onSuccess={handlePwdSuccess} 
-      />
+        {/* Password Re-entry Modal */}
+        <PasswordReentryModal 
+          isOpen={showPwdModal} 
+          onClose={handlePwdCancel} 
+          onSuccess={handlePwdSuccess} 
+        />
 
-      {/* Sidebar */}
-      <Sidebar
-        user={user}
-        navItems={navItems}
-        activeView={activeView}
-        onViewChange={handleViewChange}
-      />
+        {/* Sidebar */}
+        <Sidebar
+          user={user}
+          navItems={navItems}
+          activeView={activeView}
+          onViewChange={handleViewChange}
+        />
 
-      {/* Main content */}
-      <main className="flex-1 flex flex-col overflow-auto">
-        <div className="flex-1 p-8">
-          <ActiveView user={user} onViewChange={setActiveView} />
-        </div>
-      </main>
+        {/* Main content */}
+        <main className="flex-1 flex flex-col overflow-auto">
+          <div className="flex-1 p-8">
+            <ActiveView user={user} onViewChange={setActiveView} />
+          </div>
+        </main>
 
-    </div>
+      </div>
+    </WebSocketProvider>
   );
 }

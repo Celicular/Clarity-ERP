@@ -112,6 +112,11 @@ Why leak company data to external communication tools like Slack or Teams? Relyo
 
 ![Real-Time Chat](./screenshots/CHAT.png)
 
+### 🔔 Real-Time Event Sync & PWA Ready
+A fully reactive infrastructure that keeps all organizational stakeholders instantly updated.
+*   **Global WebSocket Sync:** Actions like leave approvals, support ticket updates, and meeting invites trigger instant browser notifications and live-refresh UI components without page reloads.
+*   **Installable App:** Fully configured as a Progressive Web App (PWA). Install it directly to your desktop or mobile home screen for a seamless native app experience.
+
 ---
 
 ## 🔒 Security, RBAC & Data Integrity

@@ -6,6 +6,7 @@
 ───────────────────────────────────────────────────────────────────────────── */
 "use client";
 import { useState, useEffect, useRef } from "react";
+import { useWebSocket } from "./WebSocketProvider";
 
 const PRIORITY_STYLE = {
   Urgent: "bg-red-500/15    text-red-400    border-red-500/25",
@@ -38,6 +39,9 @@ function FileIcon({ url }) {
 }
 
 export default function BugReportView({ user }) {
+  const wsCtx = useWebSocket();
+  const lastEvent = wsCtx?.lastEvent;
+
   const [bugs, setBugs]         = useState([]);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading]   = useState(true);
@@ -66,6 +70,12 @@ export default function BugReportView({ user }) {
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    if (lastEvent?.type === "erp_sync" && lastEvent.module === "bug_reports") {
+      load();
+    }
+  }, [lastEvent]);
 
   /* ── File upload ── */
   async function handleFileChange(e) {

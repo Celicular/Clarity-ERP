@@ -7,7 +7,7 @@
 import { NextResponse } from "next/server";
 import { randomUUID }   from "crypto";
 import { getSession }   from "../../../lib/auth";
-import { query }        from "../../../lib/db";
+import { query, queryNotify } from "../../../lib/db";
 
 export async function GET(request) {
   const session = await getSession();
@@ -89,6 +89,8 @@ export async function POST(request) {
       INSERT INTO leave_requests (id, user_id, leave_type, start_date, end_date, total_days, reason, criticality)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     `, [id, session.id, leave_type || "Casual", start_date, end_date, days, reason, criticality || "Normal"]);
+
+    await queryNotify("leaves", "create", "New leave request submitted.", null, ["ADMIN", "HR"]);
 
     return NextResponse.json({ success: true, message: "Leave request submitted.", id });
 

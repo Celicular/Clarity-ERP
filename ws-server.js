@@ -5,7 +5,7 @@
  */
 require("dotenv").config({ path: ".env.local" });
 const { WebSocketServer, WebSocket } = require("ws");
-const { Pool }   = require("pg");
+const { Pool, Client }   = require("pg");
 const { jwtVerify } = require("jose");
 const { createSecretKey } = require("crypto");
 
@@ -16,6 +16,49 @@ if (!SECRET) { console.error("WS: JWT_SECRET not set"); process.exit(1); }
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const query = (text, params) => pool.query(text, params);
+
+/* ── Dedicated Postgres Client for LISTEN/NOTIFY ── */
+const pgClient = new Client({ connectionString: process.env.DATABASE_URL });
+pgClient.connect().then(() => {
+  pgClient.query("LISTEN erp_sync");
+  console.log("[WS] Listening for Postgres notifications on 'erp_sync'");
+}).catch(err => console.error("[WS] Failed to connect pgClient for LISTEN", err));
+
+pgClient.on("notification", (msg) => {
+  if (msg.channel === "erp_sync") {
+    try {
+      const payload = JSON.parse(msg.payload);
+      broadcastGlobalSync(payload);
+    } catch (e) { console.error("[WS] Invalid erp_sync payload", e); }
+  }
+});
+
+function broadcastGlobalSync(payload) {
+  const globClients = rooms.get("global");
+  if (!globClients) return;
+  const out = JSON.stringify({ type: "erp_sync", ...payload });
+  for (const ws of globClients) {
+    if (ws.readyState === WebSocket.OPEN) {
+      const u = ws._user;
+      if (!u) continue;
+      
+      let canSee = false;
+      if (!payload.target_users && !payload.target_roles) {
+        canSee = true; // Public broadcast
+      } else {
+        if (payload.target_users && payload.target_users.includes(u.id)) canSee = true;
+        
+        if (payload.target_roles && payload.target_roles.length > 0) {
+           if (payload.target_roles.includes(u.role)) canSee = true;
+           if (payload.target_roles.includes(u.department)) canSee = true;
+           if (payload.target_roles.includes(u.sub_role_dept)) canSee = true;
+        }
+      }
+      
+      if (canSee) ws.send(out);
+    }
+  }
+}
 
 /* Pre-build the HMAC key once */
 const jwtKey = createSecretKey(Buffer.from(SECRET, "utf8"));

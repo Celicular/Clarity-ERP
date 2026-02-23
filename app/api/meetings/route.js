@@ -6,7 +6,7 @@
 import { NextResponse } from "next/server";
 import { randomUUID }   from "crypto";
 import { getSession }   from "../../../lib/auth";
-import { query }        from "../../../lib/db";
+import { query, queryNotify } from "../../../lib/db";
 import { logAudit }     from "../../../lib/auditlogger";
 
 export async function GET() {
@@ -86,6 +86,10 @@ export async function POST(request) {
     let ip = request.headers.get("x-forwarded-for") || request.headers.get("remote-addr") || request.ip || "Unknown IP";
     if (ip === "::1") ip = "127.0.0.1";
     await logAudit({ action: `MEETING_SCHEDULED: ${title}`, criticality: "Low", done_by: session.id, done_by_ip: ip });
+
+    if (ids.length > 0) {
+      await queryNotify("meetings", "create", `You have been added to a new meeting: ${title}`, ids);
+    }
 
     return NextResponse.json({ success: true, message: "Meeting created.", id });
   } catch (err) {

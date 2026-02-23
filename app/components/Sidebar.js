@@ -8,17 +8,18 @@
 
 import { useState, useEffect }  from "react";
 import { useRouter }            from "next/navigation";
+import { useWebSocket }         from "./WebSocketProvider";
 
 export default function Sidebar({ user, navItems, activeView, onViewChange }) {
   const [collapsed, setCollapsed]       = useState(false);
   const [loggingOut, setLoggingOut]     = useState(false);
   const [overdueCount, setOverdueCount] = useState(0);
   const [chatUnread, setChatUnread]     = useState(0);
+  const [badges, setBadges]             = useState({});
   const router = useRouter();
-
-  const WS_PRIMARY  = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3001";
-  const WS_FALLBACK = process.env.NEXT_PUBLIC_WS_FALLBACK_URL
-    || (typeof window !== "undefined" ? `ws://${window.location.hostname}:3001` : "ws://localhost:3001");
+  
+  const wsCtx = useWebSocket();
+  const lastEvent = wsCtx?.lastEvent;
 
   /* ── Poll overdue follow-ups every 90 s ── */
   useEffect(() => {
@@ -49,40 +50,38 @@ export default function Sidebar({ user, navItems, activeView, onViewChange }) {
     // Listen for instant read updates from ChatView
     window.addEventListener("chat:read", checkUnread);
 
-    // Global WS connection for instant unread notifications
-    let ws = null;
-    async function connectGlobalWS(url = WS_PRIMARY) {
-      try {
-        const tRes = await fetch("/api/chat/ws-ticket");
-        if (!tRes.ok) return;
-        const { token } = await tRes.json();
-        if (!token) return;
-
-        ws = new WebSocket(`${url}?room=global&token=${encodeURIComponent(token)}`);
-        ws.onerror = () => {
-          if (url === WS_PRIMARY && WS_FALLBACK !== WS_PRIMARY) {
-            console.warn("[Sidebar] localhost WS failed, trying fallback:", WS_FALLBACK);
-            ws.close();
-            connectGlobalWS(WS_FALLBACK);
-          }
-        };
-        ws.onmessage = (e) => {
-          const data = JSON.parse(e.data);
-          if (data.type === "global_message") {
-            checkUnread();
-            window.dispatchEvent(new Event("chat:unread_bump"));
-          }
-        };
-      } catch { /* ignore */ }
-    }
-    connectGlobalWS();
-
     return () => {
       clearInterval(iv);
       window.removeEventListener("chat:read", checkUnread);
-      if (ws) ws.close();
     };
   }, []);
+
+  /* ── Listen for Global Events from WebSocketProvider ── */
+  useEffect(() => {
+    if (!lastEvent) return;
+    if (lastEvent.type === "global_message") {
+      // Refresh chat unread count
+      fetch("/api/chat/unread")
+        .then(res => res.json())
+        .then(data => setChatUnread(data.total || 0))
+        .catch(() => {});
+      window.dispatchEvent(new Event("chat:unread_bump"));
+    } else if (lastEvent.type === "erp_sync") {
+      let mod = lastEvent.module;
+      if (mod === "bug_reports") mod = "bug-reports";
+      
+      if (activeView !== mod) {
+        setBadges(prev => ({ ...prev, [mod]: (prev[mod] || 0) + 1 }));
+      }
+    }
+  }, [lastEvent, activeView]);
+
+  function handleNavClick(itemId) {
+    if (badges[itemId]) {
+      setBadges(prev => ({ ...prev, [itemId]: 0 }));
+    }
+    onViewChange(itemId);
+  }
 
   /* ── Logout ── */
   async function handleLogout() {
@@ -216,7 +215,7 @@ export default function Sidebar({ user, navItems, activeView, onViewChange }) {
                 </p>
               )}
               <button
-                onClick={() => onViewChange(item.id)}
+                onClick={() => handleNavClick(item.id)}
                 title={collapsed ? item.label : undefined}
                 className={`
                   flex items-center gap-3 px-3 py-2.5 rounded-lg
@@ -238,6 +237,12 @@ export default function Sidebar({ user, navItems, activeView, onViewChange }) {
               {item.id === "chat" && chatUnread > 0 && (
                 <span className={`shrink-0 min-w-[18px] h-[18px] rounded-full bg-orange-500 text-white text-[9px] font-bold flex items-center justify-center px-1 ${collapsed ? "absolute top-1 right-1" : ""}`}>
                   {chatUnread > 99 ? "99+" : chatUnread}
+                </span>
+              )}
+              {/* ERP Sync badges for modules like leaves, meetings, etc. */}
+              {item.id !== "chat" && badges[item.id] > 0 && (
+                <span className={`shrink-0 min-w-[18px] h-[18px] rounded-full bg-blue-500 text-white text-[9px] font-bold flex items-center justify-center px-1 ${collapsed ? "absolute top-1 right-1" : ""}`}>
+                  {badges[item.id] > 99 ? "99+" : badges[item.id]}
                 </span>
               )}
               {isActive && !collapsed && (
